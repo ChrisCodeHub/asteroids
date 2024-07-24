@@ -14,6 +14,8 @@
 #include "raylib.h"
 
 #include <math.h>
+#include <vector>
+#include "meteor.hpp"
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -79,6 +81,10 @@ static Shoot shoot[PLAYER_MAX_SHOOTS] = { 0 };
 static Meteor bigMeteor[MAX_BIG_METEORS] = { 0 };
 static Meteor mediumMeteor[MAX_MEDIUM_METEORS] = { 0 };
 static Meteor smallMeteor[MAX_SMALL_METEORS] = { 0 };
+static std::vector<Asteroid> bigMeteors;
+static std::vector<Asteroid> mediumMeteors;
+static std::vector<Asteroid> smallMeteors;
+
 
 static int midMeteorsCount = 0;
 static int smallMeteorsCount = 0;

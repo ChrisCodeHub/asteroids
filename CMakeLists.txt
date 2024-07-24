@@ -25,8 +25,20 @@ endif()
 
 # Our Project
 
-add_executable(${PROJECT_NAME} asteroids.c)
+
+set(PATH_TO_INCLUDES 
+    ./include
+)
+
+set(app_SOURCES  
+    ./main.cpp
+    ./meteor.cpp
+   )
+
+add_executable(${PROJECT_NAME} asteroids.cpp)
 target_link_libraries(${PROJECT_NAME} raylib)
+target_include_directories(${PROJECT_NAME} PRIVATE ${PATH_TO_INCLUDES})
+
 
 # Web Configurations
 if (${PLATFORM} STREQUAL "Web")
