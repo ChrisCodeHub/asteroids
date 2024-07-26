@@ -16,6 +16,9 @@
 #include <math.h>
 #include <vector>
 #include "meteor.hpp"
+#include <memory>
+#include <cstdint>
+#include <iostream>
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -28,10 +31,10 @@
 #define PLAYER_SPEED        6.0f
 #define PLAYER_MAX_SHOOTS   10
 
-#define METEORS_SPEED       2
-#define MAX_BIG_METEORS     4
-#define MAX_MEDIUM_METEORS  8
-#define MAX_SMALL_METEORS   16
+uint32_t constexpr METEORS_SPEED = 2;
+uint32_t constexpr MAX_BIG_METEORS = 4;
+uint32_t constexpr MAX_MEDIUM_METEORS = 8;
+uint32_t constexpr MAX_SMALL_METEORS = 16;
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
@@ -81,9 +84,9 @@ static Shoot shoot[PLAYER_MAX_SHOOTS] = { 0 };
 static Meteor bigMeteor[MAX_BIG_METEORS] = { 0 };
 static Meteor mediumMeteor[MAX_MEDIUM_METEORS] = { 0 };
 static Meteor smallMeteor[MAX_SMALL_METEORS] = { 0 };
-static std::vector<Asteroid> bigMeteors;
-static std::vector<Asteroid> mediumMeteors;
-static std::vector<Asteroid> smallMeteors;
+static std::vector<Asteroid> bigAsteroids;
+static std::vector<Asteroid> mediumAsteroids;
+static std::vector<Asteroid> smallAsteroids;
 
 
 static int midMeteorsCount = 0;
@@ -104,6 +107,40 @@ static void UpdateDrawFrame(void);  // Update and Draw (one frame)
 //------------------------------------------------------------------------------------
 int main(void)
 {
+
+    // Providing a seed value to teh random number generator
+	srand((unsigned) time(NULL));
+    auto seed = (rand() % 10);
+    SetRandomSeed(seed);
+
+
+   // start to create the low level blocks we will need (asteroids)    
+    for (uint32_t i = 0; i < MAX_BIG_METEORS; i++)
+    {
+        Asteroid bigAsteroid;
+        bigAsteroid.initialiseAMeteor(i, screenWidth, screenHeight, METEORS_SPEED);
+        bigAsteroids.push_back(bigAsteroid);
+    }
+    
+
+    for (uint32_t i = 0; i < MAX_MEDIUM_METEORS; ++i)
+    {
+        Asteroid mediumAsteroid;
+        bool active=false;
+        mediumAsteroid.initialiseAMeteor(i, active);
+        mediumAsteroids.push_back(mediumAsteroid);
+    }
+    for (uint32_t i = 0; i < MAX_SMALL_METEORS; ++i)
+    {
+        Asteroid smallAsteroid;
+        bool active=false;
+        smallAsteroid.initialiseAMeteor(i, active);
+        smallAsteroids.push_back(smallAsteroid);
+    }
+
+
+
+
     // Initialization (Note windowTitle is unused on Android)
     //---------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "classic game: asteroids");
@@ -219,7 +256,7 @@ void InitGame(void)
         mediumMeteor[i].speed = (Vector2){0,0};
         mediumMeteor[i].radius = 20;
         mediumMeteor[i].active = false;
-        mediumMeteor[i].color = BLUE;
+        mediumMeteor[i].color = RED;
     }
 
     for (int i = 0; i < MAX_SMALL_METEORS; i++)
@@ -228,7 +265,7 @@ void InitGame(void)
         smallMeteor[i].speed = (Vector2){0,0};
         smallMeteor[i].radius = 10;
         smallMeteor[i].active = false;
-        smallMeteor[i].color = BLUE;
+        smallMeteor[i].color = GREEN;
     }
 
     midMeteorsCount = 0;
@@ -361,22 +398,42 @@ void UpdateGame(void)
                 if (CheckCollisionCircles((Vector2){player.collider.x, player.collider.y}, player.collider.z, smallMeteor[a].position, smallMeteor[a].radius) && smallMeteor[a].active) gameOver = true;
             }
 
-            // Meteors logic: big meteors
-            for (int i = 0; i < MAX_BIG_METEORS; i++)
-            {
-                if (bigMeteor[i].active)
-                {
-                    // Movement
-                    bigMeteor[i].position.x += bigMeteor[i].speed.x;
-                    bigMeteor[i].position.y += bigMeteor[i].speed.y;
-
-                    // Collision logic: meteor vs wall
-                    if  (bigMeteor[i].position.x > screenWidth + bigMeteor[i].radius) bigMeteor[i].position.x = -(bigMeteor[i].radius);
-                    else if (bigMeteor[i].position.x < 0 - bigMeteor[i].radius) bigMeteor[i].position.x = screenWidth + bigMeteor[i].radius;
-                    if (bigMeteor[i].position.y > screenHeight + bigMeteor[i].radius) bigMeteor[i].position.y = -(bigMeteor[i].radius);
-                    else if (bigMeteor[i].position.y < 0 - bigMeteor[i].radius) bigMeteor[i].position.y = screenHeight + bigMeteor[i].radius;
-                }
+            //meteor logic
+            // TODO - there is a beter way to apply a function to each and every entry in a vector
+            // this works, but is a bit verbose to type
+            int i = 0;
+            for (auto &asteroid : bigAsteroids)
+            {                
+                asteroid.updateposition(screenWidth, screenHeight);
+                bigMeteor[i].position.x = asteroid.position.x;
+                bigMeteor[i].position.y = asteroid.position.y;
+                i++;
             }
+            for (auto &asteroid : mediumAsteroids)
+            {
+                asteroid.updateposition(screenWidth, screenHeight);
+            }
+            for (auto &asteroid : smallAsteroids)
+            {
+                asteroid.updateposition(screenWidth, screenHeight);
+            }                        
+
+            // Meteors logic: big meteors
+            // for (int i = 0; i < MAX_BIG_METEORS; i++)
+            // {
+            //     if (bigMeteor[i].active)
+            //     {
+            //         // Movement
+            //         bigMeteor[i].position.x += bigMeteor[i].speed.x;
+            //         bigMeteor[i].position.y += bigMeteor[i].speed.y;
+
+            //         // Collision logic: meteor vs wall
+            //         if  (bigMeteor[i].position.x > screenWidth + bigMeteor[i].radius) bigMeteor[i].position.x = -(bigMeteor[i].radius);
+            //         else if (bigMeteor[i].position.x < 0 - bigMeteor[i].radius) bigMeteor[i].position.x = screenWidth + bigMeteor[i].radius;
+            //         if (bigMeteor[i].position.y > screenHeight + bigMeteor[i].radius) bigMeteor[i].position.y = -(bigMeteor[i].radius);
+            //         else if (bigMeteor[i].position.y < 0 - bigMeteor[i].radius) bigMeteor[i].position.y = screenHeight + bigMeteor[i].radius;
+            //     }
+            // }
 
             // Meteors logic: medium meteors
             for (int i = 0; i < MAX_MEDIUM_METEORS; i++)
@@ -526,20 +583,29 @@ void DrawGame(void)
             // Draw meteors
             for (int i = 0; i < MAX_BIG_METEORS; i++)
             {
-                if (bigMeteor[i].active) DrawCircleV(bigMeteor[i].position, bigMeteor[i].radius, DARKGRAY);
-                else DrawCircleV(bigMeteor[i].position, bigMeteor[i].radius, Fade(LIGHTGRAY, 0.3f));
+                if (bigMeteor[i].active) 
+                {
+                    DrawCircleV(bigMeteor[i].position, bigMeteor[i].radius, DARKGRAY);
+                }
+
             }
 
             for (int i = 0; i < MAX_MEDIUM_METEORS; i++)
             {
-                if (mediumMeteor[i].active) DrawCircleV(mediumMeteor[i].position, mediumMeteor[i].radius, GRAY);
-                else DrawCircleV(mediumMeteor[i].position, mediumMeteor[i].radius, Fade(LIGHTGRAY, 0.3f));
+                if (mediumMeteor[i].active) 
+                {
+                    DrawCircleV(mediumMeteor[i].position, mediumMeteor[i].radius, GRAY);
+                }
+
             }
 
             for (int i = 0; i < MAX_SMALL_METEORS; i++)
             {
-                if (smallMeteor[i].active) DrawCircleV(smallMeteor[i].position, smallMeteor[i].radius, GRAY);
-                else DrawCircleV(smallMeteor[i].position, smallMeteor[i].radius, Fade(LIGHTGRAY, 0.3f));
+                if (smallMeteor[i].active) 
+                {
+                    DrawCircleV(smallMeteor[i].position, smallMeteor[i].radius, GRAY);
+                }
+
             }
 
             // Draw shoot

@@ -31,11 +31,11 @@ set(PATH_TO_INCLUDES
 )
 
 set(app_SOURCES  
-    ./main.cpp
-    ./meteor.cpp
+    asteroids.cpp
+    meteor.cpp
    )
 
-add_executable(${PROJECT_NAME} asteroids.cpp)
+add_executable(${PROJECT_NAME} ${app_SOURCES})
 target_link_libraries(${PROJECT_NAME} raylib)
 target_include_directories(${PROJECT_NAME} PRIVATE ${PATH_TO_INCLUDES})
 

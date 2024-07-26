@@ -1,45 +1,92 @@
 #include "raylib.h"
 #include "meteor.hpp"
+#include <cstdint>
+#include <iostream>
 
 
-void Asteroid::initialiseAMetoer(void)
-/*
-posx = GetRandomValue(0, screenWidth);
+Asteroid::Asteroid(void)
+{
+    std::cout<<" made me an asteroid"<<std::endl;
+}
 
-        while (!correctRange)
+void Asteroid::initialiseAMeteor(uint32_t rockNumber, bool active)
+{
+    position = (Vector2){-100, -100};
+    speed = (Vector2){0,0};
+    radius = 10;
+    active = false;
+    color = GREEN;
+}
+
+void Asteroid::initialiseAMeteor(uint32_t rockNumber, const int screenWidth, const int screenHeight, uint32_t METEORS_SPEED)
+{
+    std::cout<< " setting to " << rockNumber << "    " ;
+    rockNum = rockNumber;
+    int posx, posy;
+    int velx, vely;
+    bool correctRange{false};
+
+    // TODO
+    // create lambda(s) for this
+    posx = 0 + (rand() % screenWidth);//  GetRandomValue(0, screenWidth);
+    posy = 0 + (rand() % screenHeight); //GetRandomValue(0, screenHeight);
+
+    while (!correctRange)
+    {
+        if (posx > screenWidth/2 - 150 && posx < screenWidth/2 + 150) 
+            posx = 0 + (rand() % screenWidth);// GetRandomValue(0, screenWidth);
+        else 
+            correctRange = true;
+    }
+
+    correctRange = false;
+    while (!correctRange)
+    {
+        if (posy > screenHeight/2 - 150 && posy < screenHeight/2 + 150)  
+            posy = 0 + (rand() % screenHeight); // GetRandomValue(0, screenHeight);
+        else 
+            correctRange = true;
+    }
+
+    position = (Vector2){posx, posy};
+
+    correctRange = false;
+    velx = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
+    vely = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
+
+    while (!correctRange)
+    {
+        if (velx == 0 && vely == 0)
         {
-            if (posx > screenWidth/2 - 150 && posx < screenWidth/2 + 150) posx = GetRandomValue(0, screenWidth);
-            else correctRange = true;
+            velx = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
+            vely = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
         }
+        else correctRange = true;
+    }
 
-        correctRange = false;
+    speed = (Vector2){velx, vely};
+    radius = 40;
+    active = true;
+    color = BLUE;
+}
 
-        posy = GetRandomValue(0, screenHeight);
+void Asteroid::updateposition(const int screenWidth, const int screenHeight)
+{
+    if (active)
+    {
+        // Movement
+        position.x += speed.x;
+        position.y += speed.y;
 
-        while (!correctRange)
-        {
-            if (posy > screenHeight/2 - 150 && posy < screenHeight/2 + 150)  posy = GetRandomValue(0, screenHeight);
-            else correctRange = true;
-        }
+        // Collision logic: meteor vs edge of window
+        if  (position.x > screenWidth + radius) 
+            position.x = -radius;
+        else if (position.x < 0 - radius) 
+            position.x = screenWidth + radius;
 
-        bigMeteor[i].position = (Vector2){posx, posy};
-
-        correctRange = false;
-        velx = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
-        vely = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
-
-        while (!correctRange)
-        {
-            if (velx == 0 && vely == 0)
-            {
-                velx = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
-                vely = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
-            }
-            else correctRange = true;
-        }
-
-        bigMeteor[i].speed = (Vector2){velx, vely};
-        bigMeteor[i].radius = 40;
-        bigMeteor[i].active = true;
-        bigMeteor[i].color = BLUE;
-    }*/
+        if (position.y > screenHeight + radius) 
+            position.y = -radius;
+        else if (position.y < 0 - radius) 
+            position.y = screenHeight + radius;
+    }
+}
