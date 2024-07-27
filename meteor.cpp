@@ -70,6 +70,15 @@ void Asteroid::initialiseAMeteor(uint32_t rockNumber, const int screenWidth, con
     color = BLUE;
 }
 
+void Asteroid::initialiseAMeteor(Vector2 positionIn, Vector2 speedIn,float radiusIn)
+{
+        position = positionIn;
+        speed = speedIn;
+        active = true;
+        radius = radiusIn;
+        color = BLUE;
+}
+
 void Asteroid::updateposition(const int screenWidth, const int screenHeight)
 {
     if (active)
