@@ -33,6 +33,7 @@ set(PATH_TO_INCLUDES
 set(app_SOURCES  
     asteroids.cpp
     meteor.cpp
+    shots.cpp
    )
 
 add_executable(${PROJECT_NAME} ${app_SOURCES})
