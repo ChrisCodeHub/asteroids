@@ -17,10 +17,12 @@
 #include <vector>
 #include "meteor.hpp"
 #include "shots.hpp"
+#include "gameUtils.hpp"
 #include <memory>
 #include <cstdint>
 #include <iostream>
 #include <algorithm>
+
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -48,23 +50,6 @@ typedef struct Player {
     Color color;
 } Player;
 
-typedef struct Shoot {
-    Vector2 position;
-    Vector2 speed;
-    float radius;
-    float rotation;
-    int lifeSpawn;
-    bool active;
-    Color color;
-} Shoot;
-
-typedef struct Meteor {
-    Vector2 position;
-    Vector2 speed;
-    float radius;
-    bool active;
-    Color color;
-} Meteor;
 
 //------------------------------------------------------------------------------------
 // Global Variables Declaration
@@ -184,8 +169,7 @@ void UpdateGame(void)
             if (IsKeyDown(KEY_RIGHT)) player.rotation += 5;
 
             // Player logic: speed
-            player.speed.x = sin(player.rotation*DEG2RAD)*PLAYER_SPEED;
-            player.speed.y = cos(player.rotation*DEG2RAD)*PLAYER_SPEED;
+            player.speed = gameUtils::calcNewSpeed(player.rotation, PLAYER_SPEED, false);
 
             // Player logic: acceleration
             if (IsKeyDown(KEY_UP))
@@ -208,10 +192,23 @@ void UpdateGame(void)
             player.position.y -= (player.speed.y*player.acceleration);
 
             // Collision logic: player vs walls
-            if (player.position.x > screenWidth + shipHeight) player.position.x = -(shipHeight);
-            else if (player.position.x < -(shipHeight)) player.position.x = screenWidth + shipHeight;
-            if (player.position.y > (screenHeight + shipHeight)) player.position.y = -(shipHeight);
-            else if (player.position.y < -(shipHeight)) player.position.y = screenHeight + shipHeight;
+            if (player.position.x > screenWidth + shipHeight) 
+            {
+                player.position.x = -(shipHeight);
+            }
+            else if (player.position.x < -(shipHeight)) 
+            {
+                player.position.x = screenWidth + shipHeight;
+            }
+
+            if (player.position.y > (screenHeight + shipHeight)) 
+            {
+                player.position.y = -(shipHeight);
+            }
+            else if (player.position.y < -(shipHeight)) 
+            {
+                player.position.y = screenHeight + shipHeight;
+            }
 
             // Player shoot logic
             // create new Shots upto PLAYER_MAX_SHOOTS as player presesd SPACE key 
@@ -220,7 +217,8 @@ void UpdateGame(void)
                 
                 if (shoots.size() < PLAYER_MAX_SHOOTS)
                 {
-                    Vector2 playerPosition = (Vector2){ player.position.x + sin(player.rotation*DEG2RAD)*(shipHeight), player.position.y - cos(player.rotation*DEG2RAD)*(shipHeight) };
+                    Vector2 playerPosition = (Vector2){ player.position.x + sin(player.rotation*DEG2RAD)*(shipHeight),
+                                                        player.position.y - cos(player.rotation*DEG2RAD)*(shipHeight) };
                     Shots newShot(player.rotation, PLAYER_SPEED, playerPosition);
                     shoots.push_back(newShot);                   
                 }
@@ -236,50 +234,28 @@ void UpdateGame(void)
                 shot.position.y -= shot.speed.y;
                 
                 // Collision logic: shoot vs walls
-                if  (shot.position.x > screenWidth + shot.radius)
+                if ((shot.position.x > screenWidth + shot.radius) || 
+                    (shot.position.x < 0 - shot.radius) || 
+                    (shot.position.y > screenHeight + shot.radius) || 
+                    (shot.position.y < 0 - shot.radius) ||
+                    (shot.lifeSpawn >= 60) )
                 {
                     shot.active = false;
-                    shot.lifeSpawn = 0;
                 }
-                else if (shot.position.x < 0 - shot.radius)
-                {
-                    shot.active = false;
-                    shot.lifeSpawn = 0;
-                }
-                if (shot.position.y > screenHeight + shot.radius)
-                {
-                    shot.active = false;
-                    shot.lifeSpawn = 0;
-                }
-                else if (shot.position.y < 0 - shot.radius)
-                {
-                    shot.active = false;
-                    shot.lifeSpawn = 0;
-                }
-
-                // Life of shoot
-                if (shot.lifeSpawn >= 60)
-                {
-                    shot.position = (Vector2){0, 0};
-                    shot.speed = (Vector2){0, 0};
-                    shot.lifeSpawn = 0;
-                    shot.active = false;
-                }               
             }
 
-            // https://en.wikipedia.org/wiki/Erase%E2%80%93remove_idiom
-            // https://www.youtube.com/watch?v=qH6sSOr-yk8
             shoots.erase(std::remove_if( shoots.begin(), 
                             shoots.end(),
                             [](Shots const & p) { return p.active == false; }
                             ), shoots.end());
 
 
-            // Collision logic: player vs meteors
+            // Collision logic: player vs meteors            
             player.collider = (Vector3){player.position.x + sin(player.rotation*DEG2RAD)*(shipHeight/2.5f), player.position.y - cos(player.rotation*DEG2RAD)*(shipHeight/2.5f), 12};
 
             for (int a = 0; a < bigAsteroids.size(); a++)
             {
+                gameUtils::hasCollided();
                 if (CheckCollisionCircles((Vector2){player.collider.x, player.collider.y}, player.collider.z, bigAsteroids[a].position, bigAsteroids[a].radius) && bigAsteroids[a].active) gameOver = true;
             }
 
@@ -320,25 +296,17 @@ void UpdateGame(void)
                 {
                     for (int a = 0; a < bigAsteroids.size(); a++)
                     {   
-                        if (bigAsteroids[a].active && CheckCollisionCircles(shot.position, shot.radius, bigAsteroids[a].position, bigAsteroids[a].radius))
+                        if (CheckCollisionCircles(shot.position, shot.radius, bigAsteroids[a].position, bigAsteroids[a].radius))
                         {
                             shot.active = false;
-                            shot.lifeSpawn = 0;
                             bigAsteroids[a].active = false;
                             
-
                             for (int j = 0; j < 2; j ++)
                             {
                                 Vector2 position = (Vector2){bigAsteroids[a].position.x, bigAsteroids[a].position.y};
                                 Vector2 speed{0,0};
-                                if (j == 0)
-                                {                                    
-                                    speed = (Vector2){cos(shot.rotation*DEG2RAD)*METEORS_SPEED*-1, sin(shot.rotation*DEG2RAD)*METEORS_SPEED*-1};
-                                }
-                                else
-                                {
-                                    speed = (Vector2){cos(shot.rotation*DEG2RAD)*METEORS_SPEED, sin(shot.rotation*DEG2RAD)*METEORS_SPEED};                                
-                                }
+                                speed = (j == 0) ? gameUtils::calcNewSpeed(shot.rotation, METEORS_SPEED, true)
+                                                 : gameUtils::calcNewSpeed(shot.rotation, METEORS_SPEED, false);
                                 Asteroid mediumAsteroid;
                                 mediumAsteroid.initialiseAMeteor(position, speed, 20);
                                 mediumAsteroids.push_back(mediumAsteroid);
@@ -348,22 +316,18 @@ void UpdateGame(void)
 
                     for (int b = 0; b < mediumAsteroids.size(); b++)
                     {
-                        if (mediumAsteroids[b].active && CheckCollisionCircles(shot.position, shot.radius, 
-                                                                               mediumAsteroids[b].position, mediumAsteroids[b].radius))
+                        if (CheckCollisionCircles(shot.position, shot.radius, 
+                                                  mediumAsteroids[b].position, mediumAsteroids[b].radius))
                         {
                             shot.active = false;
-                            shot.lifeSpawn = 0;
                             mediumAsteroids[b].active=false;
                             
-
                             for (int j = 0; j < 2; j ++)
                             {
                                 Vector2 position = (Vector2){mediumAsteroids[b].position.x, mediumAsteroids[b].position.y};
                                 Vector2 speed;
-                                speed = ( j%2 == 0) ? (Vector2){cos(shot.rotation*DEG2RAD)*METEORS_SPEED*-1, 
-                                                                 sin(shot.rotation*DEG2RAD)*METEORS_SPEED*-1}
-                                                    :  (Vector2){cos(shot.rotation*DEG2RAD)*METEORS_SPEED, 
-                                                                  sin(shot.rotation*DEG2RAD)*METEORS_SPEED};
+                                speed = ( j == 0) ? gameUtils::calcNewSpeed(shot.rotation, METEORS_SPEED, true)
+                                                  : gameUtils::calcNewSpeed(shot.rotation, METEORS_SPEED, false);
                                 Asteroid smallRock;
                                 smallRock.initialiseAMeteor(position, speed, 10);
                                 smallAsteroids.push_back(smallRock);
@@ -373,11 +337,10 @@ void UpdateGame(void)
 
                     for (int c = 0; c < smallAsteroids.size() ; c++)
                     {
-                        if (smallAsteroids[c].active && CheckCollisionCircles(shot.position, shot.radius,
-                                                                              smallAsteroids[c].position, smallAsteroids[c].radius))
+                        if (CheckCollisionCircles(shot.position, shot.radius,
+                                                  smallAsteroids[c].position, smallAsteroids[c].radius))
                         {
                             shot.active = false;
-                            shot.lifeSpawn = 0;
                             smallAsteroids[c].active = false;                            
                         }
                     }
@@ -400,10 +363,7 @@ void UpdateGame(void)
                             [](Asteroid const & r) { return r.active == false; }
                            ), smallAsteroids.end());                           
         
-        if (0 == (bigAsteroids.size() + mediumAsteroids.size() + smallAsteroids.size()) )
-        {
-            victory = true;
-        } 
+        victory = (0 == (bigAsteroids.size() + mediumAsteroids.size() + smallAsteroids.size()) );
     }
     else
     {
@@ -433,42 +393,39 @@ void DrawGame(void)
             // Draw meteors
             for (int i = 0; i < bigAsteroids.size(); i++)
             {
-                if (bigAsteroids[i].active) 
-                {
-                    DrawCircleV(bigAsteroids[i].position, bigAsteroids[i].radius, DARKGRAY);
-                }
-
+                DrawCircleV(bigAsteroids[i].position, bigAsteroids[i].radius, DARKGRAY);
             }
 
             for (int i = 0; i < mediumAsteroids.size(); i++)
             {
-                if (mediumAsteroids[i].active) 
-                {
-                    DrawCircleV(mediumAsteroids[i].position, mediumAsteroids[i].radius, mediumAsteroids[i].color);
-                }
-
+                DrawCircleV(mediumAsteroids[i].position, mediumAsteroids[i].radius, mediumAsteroids[i].color);
             }
 
             for (int i = 0; i < smallAsteroids.size(); i++)
             {
-                if (smallAsteroids[i].active) 
-                {
-                    DrawCircleV(smallAsteroids[i].position, smallAsteroids[i].radius, smallAsteroids[i].color);
-                }
+                DrawCircleV(smallAsteroids[i].position, smallAsteroids[i].radius, smallAsteroids[i].color);
             }
 
             // Draw shoot
             //for (int i = 0; i < PLAYER_MAX_SHOOTS; i++)
             for (auto &shot: shoots)
             {
-                if (shot.active) DrawCircleV(shot.position, shot.radius, GREEN);
+               DrawCircleV(shot.position, shot.radius, shot.color);
             }
 
-            if (victory) DrawText("VICTORY", screenWidth/2 - MeasureText("VICTORY", 20)/2, screenHeight/2, 20, LIGHTGRAY);
-
-            if (pause) DrawText("GAME PAUSED", screenWidth/2 - MeasureText("GAME PAUSED", 40)/2, screenHeight/2 - 40, 40, GRAY);
+            if (victory)
+            {
+                DrawText("VICTORY", screenWidth/2 - MeasureText("VICTORY", 20)/2, screenHeight/2, 20, LIGHTGRAY);
+            }
+            if (pause)
+            {
+                DrawText("GAME PAUSED", screenWidth/2 - MeasureText("GAME PAUSED", 40)/2, screenHeight/2 - 40, 40, GRAY);
+            }
         }
-        else DrawText("PRESS [ENTER] TO PLAY AGAIN", GetScreenWidth()/2 - MeasureText("PRESS [ENTER] TO PLAY AGAIN", 20)/2, GetScreenHeight()/2 - 50, 20, GRAY);
+        else 
+        {
+            DrawText("PRESS [ENTER] TO PLAY AGAIN", GetScreenWidth()/2 - MeasureText("PRESS [ENTER] TO PLAY AGAIN", 20)/2, GetScreenHeight()/2 - 50, 20, GRAY);
+        }
 
     EndDrawing();
 }

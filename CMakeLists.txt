@@ -34,6 +34,7 @@ set(app_SOURCES
     asteroids.cpp
     meteor.cpp
     shots.cpp
+    gameUtils.cpp
    )
 
 add_executable(${PROJECT_NAME} ${app_SOURCES})
