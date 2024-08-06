@@ -18,6 +18,7 @@
 #include "meteor.hpp"
 #include "shots.hpp"
 #include "gameUtils.hpp"
+#include "ship.hpp"
 #include <memory>
 #include <cstdint>
 #include <iostream>
@@ -31,24 +32,11 @@
 //----------------------------------------------------------------------------------
 // Some Defines
 //----------------------------------------------------------------------------------
-#define PLAYER_BASE_SIZE    20.0f
-#define PLAYER_SPEED        6.0f
-#define PLAYER_MAX_SHOOTS   200
-
+float constexpr PLAYER_BASE_SIZE = 20.0f;
+float constexpr PLAYER_SPEED     = 6.0;
+uint32_t constexpr PLAYER_MAX_SHOOTS = 200;
 uint32_t constexpr METEORS_SPEED = 2;
 uint32_t constexpr MAX_BIG_METEORS = 4;
-
-//----------------------------------------------------------------------------------
-// Types and Structures Definition
-//----------------------------------------------------------------------------------
-typedef struct Player {
-    Vector2 position;
-    Vector2 speed;
-    float acceleration;
-    float rotation;
-    Vector3 collider;
-    Color color;
-} Player;
 
 
 //------------------------------------------------------------------------------------
@@ -64,7 +52,7 @@ static bool victory = false;
 // NOTE: Defined triangle is isosceles with common angles of 70 degrees.
 static float shipHeight = 0.0f;
 
-static Player player = { 0 };
+
 static std::vector<Shots> shoots;
 static std::vector<Asteroid> bigAsteroids;
 static std::vector<Asteroid> mediumAsteroids;
@@ -73,11 +61,11 @@ static std::vector<Asteroid> smallAsteroids;
 //------------------------------------------------------------------------------------
 // Module Functions Declaration (local)
 //------------------------------------------------------------------------------------
-static void InitGame(void);         // Initialize game
-static void UpdateGame(void);       // Update game (one frame)
-static void DrawGame(void);         // Draw game (one frame)
+static void InitGame(Ship &ship);         // Initialize game
+static void UpdateGame(Ship &ship);       // Update game (one frame)
+static void DrawGame(Ship &ship);         // Draw game (one frame)
 static void UnloadGame(void);       // Unload game
-static void UpdateDrawFrame(void);  // Update and Draw (one frame)
+static void UpdateDrawFrame(Ship &ship);  // Update and Draw (one frame)
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -91,19 +79,25 @@ int main(void)
     SetRandomSeed(seed);
 
 
-   // start to create the low level blocks we will need (asteroids)    
+   // start to create t} Player;he low level blocks we will need 
+   // which is largely just teh frist set if large asteroids
+   // todo make these using make_unique, pass in variables to constructor
     for (uint32_t i = 0; i < MAX_BIG_METEORS; i++)
     {
         Asteroid bigAsteroid;
         bigAsteroid.initialiseAMeteor(i, screenWidth, screenHeight, METEORS_SPEED);
         bigAsteroids.push_back(bigAsteroid);
     }
+
+    // todo make this into a std::unique_ptr, add variable in at construction
+    Ship ship;
+    ship.initShip(screenWidth, screenHeight, PLAYER_BASE_SIZE);
     
     // Initialization (Note windowTitle is unused on Android)
     //---------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "classic game: asteroids");
 
-    InitGame();
+    InitGame(ship);
 
 #if defined(PLATFORM_WEB)
     emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
@@ -116,7 +110,7 @@ int main(void)
     {
         // Update and Draw
         //----------------------------------------------------------------------------------
-        UpdateDrawFrame();
+        UpdateDrawFrame(ship);
         //----------------------------------------------------------------------------------
     }
 #endif
@@ -135,28 +129,15 @@ int main(void)
 //------------------------------------------------------------------------------------
 
 // Initialize game variables
-void InitGame(void)
+void InitGame(Ship &ship)
 {
-    int posx, posy;
-    int velx, vely;
-    bool correctRange = false;
     victory = false;
     pause = false;
-
-    shipHeight = (PLAYER_BASE_SIZE/2)/tanf(20*DEG2RAD);
-
-    // Initialization player
-    player.position = (Vector2){screenWidth/2, screenHeight/2 - shipHeight/2};
-    player.speed = (Vector2){0, 0};
-    player.acceleration = 0;
-    player.rotation = 0;
-    player.collider = (Vector3){player.position.x + sin(player.rotation*DEG2RAD)*(shipHeight/2.5f), player.position.y - cos(player.rotation*DEG2RAD)*(shipHeight/2.5f), 12};
-    player.color = LIGHTGRAY;
-   
+    shipHeight = ship.shipHeight; 
 }
 
 // Update game (one frame)
-void UpdateGame(void)
+void UpdateGame(Ship &ship)
 {
     if (!gameOver)
     {
@@ -164,51 +145,7 @@ void UpdateGame(void)
 
         if (!pause)
         {
-            // Player logic: rotation
-            if (IsKeyDown(KEY_LEFT)) player.rotation -= 5;
-            if (IsKeyDown(KEY_RIGHT)) player.rotation += 5;
-
-            // Player logic: speed
-            player.speed = gameUtils::calcNewSpeed(player.rotation, PLAYER_SPEED, false);
-
-            // Player logic: acceleration
-            if (IsKeyDown(KEY_UP))
-            {
-                if (player.acceleration < 1) player.acceleration += 0.04f;
-            }
-            else
-            {
-                if (player.acceleration > 0) player.acceleration -= 0.02f;
-                else if (player.acceleration < 0) player.acceleration = 0;
-            }
-            if (IsKeyDown(KEY_DOWN))
-            {
-                if (player.acceleration > 0) player.acceleration -= 0.04f;
-                else if (player.acceleration < 0) player.acceleration = 0;
-            }
-
-            // Player logic: movement
-            player.position.x += (player.speed.x*player.acceleration);
-            player.position.y -= (player.speed.y*player.acceleration);
-
-            // Collision logic: player vs walls
-            if (player.position.x > screenWidth + shipHeight) 
-            {
-                player.position.x = -(shipHeight);
-            }
-            else if (player.position.x < -(shipHeight)) 
-            {
-                player.position.x = screenWidth + shipHeight;
-            }
-
-            if (player.position.y > (screenHeight + shipHeight)) 
-            {
-                player.position.y = -(shipHeight);
-            }
-            else if (player.position.y < -(shipHeight)) 
-            {
-                player.position.y = screenHeight + shipHeight;
-            }
+            ship.updateShipPosition(screenWidth, screenHeight, PLAYER_SPEED);
 
             // Player shoot logic
             // create new Shots upto PLAYER_MAX_SHOOTS as player presesd SPACE key 
@@ -217,9 +154,8 @@ void UpdateGame(void)
                 
                 if (shoots.size() < PLAYER_MAX_SHOOTS)
                 {
-                    Vector2 playerPosition = (Vector2){ player.position.x + sin(player.rotation*DEG2RAD)*(shipHeight),
-                                                        player.position.y - cos(player.rotation*DEG2RAD)*(shipHeight) };
-                    Shots newShot(player.rotation, PLAYER_SPEED, playerPosition);
+                    Vector2 playerPosition = ship.getShipPosition();
+                    Shots newShot(ship.rotation, PLAYER_SPEED, playerPosition);
                     shoots.push_back(newShot);                   
                 }
             }
@@ -251,22 +187,22 @@ void UpdateGame(void)
 
 
             // Collision logic: player vs meteors            
-            player.collider = (Vector3){player.position.x + sin(player.rotation*DEG2RAD)*(shipHeight/2.5f), player.position.y - cos(player.rotation*DEG2RAD)*(shipHeight/2.5f), 12};
+            ship.updateCollider();
 
             for (int a = 0; a < bigAsteroids.size(); a++)
             {
                 gameUtils::hasCollided();
-                if (CheckCollisionCircles((Vector2){player.collider.x, player.collider.y}, player.collider.z, bigAsteroids[a].position, bigAsteroids[a].radius) && bigAsteroids[a].active) gameOver = true;
+                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, bigAsteroids[a].position, bigAsteroids[a].radius) && bigAsteroids[a].active) gameOver = true;
             }
 
             for (int a = 0; a < mediumAsteroids.size(); a++)
             {
-                if (CheckCollisionCircles((Vector2){player.collider.x, player.collider.y}, player.collider.z, mediumAsteroids[a].position, mediumAsteroids[a].radius) && mediumAsteroids[a].active) gameOver = true;
+                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, mediumAsteroids[a].position, mediumAsteroids[a].radius) && mediumAsteroids[a].active) gameOver = true;
             }
 
             for (int a = 0; a < smallAsteroids.size(); a++)
             {
-                if (CheckCollisionCircles((Vector2){player.collider.x, player.collider.y}, player.collider.z, smallAsteroids[a].position, smallAsteroids[a].radius) && smallAsteroids[a].active) gameOver = true;
+                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, smallAsteroids[a].position, smallAsteroids[a].radius) && smallAsteroids[a].active) gameOver = true;
             }
 
             //meteor logic
@@ -369,14 +305,14 @@ void UpdateGame(void)
     {
         if (IsKeyPressed(KEY_ENTER))
         {
-            InitGame();
+            InitGame(ship);
             gameOver = false;
         }
     }
 }
 
 // Draw game (one frame)
-void DrawGame(void)
+void DrawGame(Ship &ship)
 {
     BeginDrawing();
 
@@ -385,9 +321,9 @@ void DrawGame(void)
         if (!gameOver)
         {
             // Draw spaceship
-            Vector2 v1 = { player.position.x + sinf(player.rotation*DEG2RAD)*(shipHeight), player.position.y - cosf(player.rotation*DEG2RAD)*(shipHeight) };
-            Vector2 v2 = { player.position.x - cosf(player.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2), player.position.y - sinf(player.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2) };
-            Vector2 v3 = { player.position.x + cosf(player.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2), player.position.y + sinf(player.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2) };
+            Vector2 v1 = { ship.position.x + sinf(ship.rotation*DEG2RAD)*(shipHeight), ship.position.y - cosf(ship.rotation*DEG2RAD)*(shipHeight) };
+            Vector2 v2 = { ship.position.x - cosf(ship.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2), ship.position.y - sinf(ship.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2) };
+            Vector2 v3 = { ship.position.x + cosf(ship.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2), ship.position.y + sinf(ship.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2) };
             DrawTriangle(v1, v2, v3, MAROON);
 
             // Draw meteors
@@ -437,8 +373,8 @@ void UnloadGame(void)
 }
 
 // Update and Draw (one frame)
-void UpdateDrawFrame(void)
+void UpdateDrawFrame(Ship &ship)
 {
-    UpdateGame();
-    DrawGame();
+    UpdateGame(ship);
+    DrawGame(ship);
 }
