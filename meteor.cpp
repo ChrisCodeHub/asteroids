@@ -18,7 +18,7 @@ void Asteroid::initialiseAMeteor(uint32_t rockNumber, bool active)
     color = GREEN;
 }
 
-void Asteroid::initialiseAMeteor(uint32_t rockNumber, const int screenWidth, const int screenHeight, uint32_t METEORS_SPEED)
+void Asteroid::initialiseAMeteor(uint32_t rockNumber, const int screenWidth, const int screenHeight, uint32_t MeteorSpeed, RockType meteorType)
 {
     std::cout<< " setting to " << rockNumber << "    " ;
     rockNum = rockNumber;
@@ -51,15 +51,15 @@ void Asteroid::initialiseAMeteor(uint32_t rockNumber, const int screenWidth, con
     position = (Vector2){posx, posy};
 
     correctRange = false;
-    velx = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
-    vely = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
+    velx = GetRandomValue(-MeteorSpeed, MeteorSpeed);
+    vely = GetRandomValue(-MeteorSpeed, MeteorSpeed);
 
     while (!correctRange)
     {
         if (velx == 0 && vely == 0)
         {
-            velx = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
-            vely = GetRandomValue(-METEORS_SPEED, METEORS_SPEED);
+            velx = GetRandomValue(-MeteorSpeed, MeteorSpeed);
+            vely = GetRandomValue(-MeteorSpeed, MeteorSpeed);
         }
         else correctRange = true;
     }
@@ -68,15 +68,17 @@ void Asteroid::initialiseAMeteor(uint32_t rockNumber, const int screenWidth, con
     radius = 40;
     active = true;
     color = BLUE;
+    rockType = meteorType;
 }
 
-void Asteroid::initialiseAMeteor(Vector2 positionIn, Vector2 speedIn,float radiusIn)
+void Asteroid::initialiseAMeteor(Vector2 positionIn, Vector2 speedIn,float radiusIn, RockType meteorType)
 {
         position = positionIn;
         speed = speedIn;
         active = true;
         radius = radiusIn;
         color = BLUE;
+        rockType = meteorType;
 }
 
 void Asteroid::updateposition(const int screenWidth, const int screenHeight)

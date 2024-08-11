@@ -86,10 +86,11 @@ int main(void)
    // start to create t} Player;he low level blocks we will need 
    // which is largely just teh frist set if large asteroids
    // todo make these using make_unique, pass in variables to constructor
+    
     for (uint32_t i = 0; i < values.MaxBigMeteors; i++)
     {
         Asteroid bigAsteroid;
-        bigAsteroid.initialiseAMeteor(i, values.screenWidth, values.screenHeight, values.MeteorsSpeed);
+        bigAsteroid.initialiseAMeteor(i, values.screenWidth, values.screenHeight, values.MeteorsSpeed, big);
         bigAsteroids.push_back(bigAsteroid);
     }
 
@@ -228,16 +229,19 @@ void UpdateGame(Ship &ship)
                         if (CheckCollisionCircles(shot.position, shot.radius, rock.position, rock.radius))
                         {
                             shot.active = false;
-                            rock.active = false;
-                            Vector2 position = (Vector2){rock.position.x, rock.position.y};                            
-                            for (int j = 0; j < 2; j ++)
+                            rock.active = false;                            
+                            if (rock.rockType == big)
                             {
-                                Vector2 speed{0,0};
-                                speed = (j == 0) ? gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, true)
-                                                 : gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, false);
-                                Asteroid mediumAsteroid;
-                                mediumAsteroid.initialiseAMeteor(position, speed, 20);
-                                mediumAsteroids.push_back(mediumAsteroid);
+                                Vector2 position = (Vector2){rock.position.x, rock.position.y};
+                                for (int j = 0; j < 2; j ++)
+                                {
+                                    Vector2 speed{0,0};
+                                    speed = (j == 0)? gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, true)
+                                                    : gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, false);
+                                    Asteroid mediumAsteroid;
+                                    mediumAsteroid.initialiseAMeteor(position, speed, 20, medium);
+                                    mediumAsteroids.push_back(mediumAsteroid);
+                                }
                             }
                         }
                     }
@@ -247,18 +251,20 @@ void UpdateGame(Ship &ship)
                         if (CheckCollisionCircles(shot.position, shot.radius, rock.position, rock.radius))
                         {
                             shot.active = false;
-                            rock.active=false;
-                            Vector2 position = (Vector2){rock.position.x, rock.position.y};
-
-                            for (int j = 0; j < 2; j ++)
+                            rock.active=false;                            
+                            if (rock.rockType == medium)
                             {
-                                Vector2 speed;
-                                speed = ( j == 0) ? gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, true)
-                                                  : gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, false);
-                                Asteroid smallRock;
-                                smallRock.initialiseAMeteor(position, speed, 10);
-                                smallAsteroids.push_back(smallRock);
-                            }                            
+                                Vector2 position = (Vector2){rock.position.x, rock.position.y};
+                                for (int j = 0; j < 2; j ++)
+                                {
+                                    Vector2 speed;
+                                    speed = ( j == 0)? gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, true)
+                                                     : gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, false);
+                                    Asteroid smallRock;
+                                    smallRock.initialiseAMeteor(position, speed, 10, small);
+                                    smallAsteroids.push_back(smallRock);
+                                }
+                            }
                         }
                     }
 
