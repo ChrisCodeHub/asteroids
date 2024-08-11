@@ -49,10 +49,6 @@ static bool gameOver = false;
 static bool pause = false;
 static bool victory = false;
 
-// NOTE: Defined triangle is isosceles with common angles of 70 degrees.
-static float shipHeight = 0.0f;
-
-
 static std::vector<Shots> shoots;
 static std::vector<Asteroid> bigAsteroids;
 static std::vector<Asteroid> mediumAsteroids;
@@ -133,7 +129,7 @@ void InitGame(Ship &ship)
 {
     victory = false;
     pause = false;
-    shipHeight = ship.shipHeight; 
+    
 }
 
 // Update game (one frame)
@@ -163,21 +159,7 @@ void UpdateGame(Ship &ship)
             // Shoot life timer
             for (auto &shot: shoots)
             {
-                shot.lifeSpawn++;
-
-                // Movement
-                shot.position.x += shot.speed.x;
-                shot.position.y -= shot.speed.y;
-                
-                // Collision logic: shoot vs walls
-                if ((shot.position.x > screenWidth + shot.radius) || 
-                    (shot.position.x < 0 - shot.radius) || 
-                    (shot.position.y > screenHeight + shot.radius) || 
-                    (shot.position.y < 0 - shot.radius) ||
-                    (shot.lifeSpawn >= 60) )
-                {
-                    shot.active = false;
-                }
+                shot.updateLife(screenHeight, screenWidth);
             }
 
             shoots.erase(std::remove_if( shoots.begin(), 
@@ -189,20 +171,20 @@ void UpdateGame(Ship &ship)
             // Collision logic: player vs meteors            
             ship.updateCollider();
 
-            for (int a = 0; a < bigAsteroids.size(); a++)
+            for (auto &rock : bigAsteroids)
             {
                 gameUtils::hasCollided();
-                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, bigAsteroids[a].position, bigAsteroids[a].radius) && bigAsteroids[a].active) gameOver = true;
+                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, rock.position, rock.radius)) gameOver = true;
             }
 
-            for (int a = 0; a < mediumAsteroids.size(); a++)
+            for (auto &rock : mediumAsteroids)
             {
-                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, mediumAsteroids[a].position, mediumAsteroids[a].radius) && mediumAsteroids[a].active) gameOver = true;
+                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, rock.position, rock.radius)) gameOver = true;
             }
 
-            for (int a = 0; a < smallAsteroids.size(); a++)
+            for (auto &rock : smallAsteroids)
             {
-                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, smallAsteroids[a].position, smallAsteroids[a].radius) && smallAsteroids[a].active) gameOver = true;
+                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, rock.position, rock.radius)) gameOver = true;
             }
 
             //meteor logic
@@ -230,16 +212,15 @@ void UpdateGame(Ship &ship)
             {
                 if ((shot.active))
                 {
-                    for (int a = 0; a < bigAsteroids.size(); a++)
+                    for (auto &rock : bigAsteroids)
                     {   
-                        if (CheckCollisionCircles(shot.position, shot.radius, bigAsteroids[a].position, bigAsteroids[a].radius))
+                        if (CheckCollisionCircles(shot.position, shot.radius, rock.position, rock.radius))
                         {
                             shot.active = false;
-                            bigAsteroids[a].active = false;
-                            
+                            rock.active = false;
+                            Vector2 position = (Vector2){rock.position.x, rock.position.y};                            
                             for (int j = 0; j < 2; j ++)
                             {
-                                Vector2 position = (Vector2){bigAsteroids[a].position.x, bigAsteroids[a].position.y};
                                 Vector2 speed{0,0};
                                 speed = (j == 0) ? gameUtils::calcNewSpeed(shot.rotation, METEORS_SPEED, true)
                                                  : gameUtils::calcNewSpeed(shot.rotation, METEORS_SPEED, false);
@@ -250,17 +231,16 @@ void UpdateGame(Ship &ship)
                         }
                     }
 
-                    for (int b = 0; b < mediumAsteroids.size(); b++)
+                    for (auto &rock : mediumAsteroids)
                     {
-                        if (CheckCollisionCircles(shot.position, shot.radius, 
-                                                  mediumAsteroids[b].position, mediumAsteroids[b].radius))
+                        if (CheckCollisionCircles(shot.position, shot.radius, rock.position, rock.radius))
                         {
                             shot.active = false;
-                            mediumAsteroids[b].active=false;
-                            
+                            rock.active=false;
+                            Vector2 position = (Vector2){rock.position.x, rock.position.y};
+
                             for (int j = 0; j < 2; j ++)
                             {
-                                Vector2 position = (Vector2){mediumAsteroids[b].position.x, mediumAsteroids[b].position.y};
                                 Vector2 speed;
                                 speed = ( j == 0) ? gameUtils::calcNewSpeed(shot.rotation, METEORS_SPEED, true)
                                                   : gameUtils::calcNewSpeed(shot.rotation, METEORS_SPEED, false);
@@ -271,13 +251,12 @@ void UpdateGame(Ship &ship)
                         }
                     }
 
-                    for (int c = 0; c < smallAsteroids.size() ; c++)
+                    for (auto &rock : smallAsteroids)
                     {
-                        if (CheckCollisionCircles(shot.position, shot.radius,
-                                                  smallAsteroids[c].position, smallAsteroids[c].radius))
+                        if (CheckCollisionCircles(shot.position, shot.radius, rock.position, rock.radius))
                         {
                             shot.active = false;
-                            smallAsteroids[c].active = false;                            
+                            rock.active = false;                            
                         }
                     }
                 }
@@ -321,30 +300,31 @@ void DrawGame(Ship &ship)
         if (!gameOver)
         {
             // Draw spaceship
-            Vector2 v1 = { ship.position.x + sinf(ship.rotation*DEG2RAD)*(shipHeight), ship.position.y - cosf(ship.rotation*DEG2RAD)*(shipHeight) };
+            Vector2 v1 = { ship.position.x + sinf(ship.rotation*DEG2RAD)*(ship.shipHeight), ship.position.y - cosf(ship.rotation*DEG2RAD)*(ship.shipHeight) };
             Vector2 v2 = { ship.position.x - cosf(ship.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2), ship.position.y - sinf(ship.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2) };
             Vector2 v3 = { ship.position.x + cosf(ship.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2), ship.position.y + sinf(ship.rotation*DEG2RAD)*(PLAYER_BASE_SIZE/2) };
-            DrawTriangle(v1, v2, v3, MAROON);
+            DrawTriangle(v1, v2, v3, ship.color);
 
             // Draw meteors
-            for (int i = 0; i < bigAsteroids.size(); i++)
+            //for (int i = 0; i < bigAsteroids.size(); i++)
+            for (const auto &rock : bigAsteroids)
             {
-                DrawCircleV(bigAsteroids[i].position, bigAsteroids[i].radius, DARKGRAY);
+                DrawCircleV(rock.position, rock.radius, rock.color);
             }
 
-            for (int i = 0; i < mediumAsteroids.size(); i++)
+            for (const auto &rock : mediumAsteroids)
             {
-                DrawCircleV(mediumAsteroids[i].position, mediumAsteroids[i].radius, mediumAsteroids[i].color);
+                DrawCircleV(rock.position, rock.radius, rock.color);
             }
 
-            for (int i = 0; i < smallAsteroids.size(); i++)
+            for (const auto &rock : smallAsteroids)
             {
-                DrawCircleV(smallAsteroids[i].position, smallAsteroids[i].radius, smallAsteroids[i].color);
+                DrawCircleV(rock.position, rock.radius, rock.color);
             }
 
             // Draw shoot
             //for (int i = 0; i < PLAYER_MAX_SHOOTS; i++)
-            for (auto &shot: shoots)
+            for (const auto &shot: shoots)
             {
                DrawCircleV(shot.position, shot.radius, shot.color);
             }

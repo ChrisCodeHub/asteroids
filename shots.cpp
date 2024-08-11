@@ -29,3 +29,22 @@ void Shots::initialiseShot(void)
     bool active = false;
     Color color = BLACK;
 }
+
+void Shots::updateLife(const uint32_t screenHeight, const uint32_t screenWidth)
+{
+    lifeSpawn++;
+
+    // Movement
+    position.x += speed.x;
+    position.y -= speed.y;
+
+    // Collision logic: shoot vs walls
+    if ((position.x > screenWidth + radius) || 
+        (position.x < 0 - radius) || 
+        (position.y > screenHeight + radius) || 
+        (position.y < 0 - radius) ||
+        (lifeSpawn >= 60) )
+    {
+        active = false;
+    }
+}
