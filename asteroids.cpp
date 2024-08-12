@@ -86,15 +86,12 @@ int main(void)
    // todo make these using make_unique, pass in variables to constructor
     
     for (uint32_t i = 0; i < values.MaxBigMeteors; i++)
-    {
-        Asteroid newRock;
-        newRock.initialiseAMeteor(i, values.screenWidth, values.screenHeight, values.MeteorsSpeed, big);
-        asteroids.push_back(newRock);
+    {        
+        asteroids.emplace_back(i, values.screenWidth, values.screenHeight, values.MeteorsSpeed, big);
     }
 
     // todo make this into a std::unique_ptr, add variable in at construction
-    Ship ship;
-    ship.initShip(values.screenWidth, values.screenHeight, values.PlayerBaseSize);
+    Ship ship(values.screenWidth, values.screenHeight, values.PlayerBaseSize);
     
     // Initialization (Note windowTitle is unused on Android)
     //---------------------------------------------------------
@@ -216,13 +213,15 @@ void UpdateGame(Ship &ship)
                                     speed = (j == 0)? gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, true)
                                                     : gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, false);
                                     
-                                    Asteroid fragment;
+                                    
                                     if (rock.rockType == big) 
-                                        fragment.initialiseAMeteor(position, speed, 20, medium);
+                                    {
+                                        asteroids.emplace_back(position, speed, 20, medium);
+                                    }
                                     else if (rock.rockType == medium)
-                                        fragment.initialiseAMeteor(position, speed, 10, small);
-
-                                    asteroids.push_back(fragment);
+                                    {
+                                        asteroids.emplace_back(position, speed, 10, small);
+                                    }                                   
                                 }
                             }
                         }

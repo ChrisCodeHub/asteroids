@@ -16,9 +16,11 @@ class Asteroid{
 
 public:
     Asteroid(void);
-    void initialiseAMeteor(uint32_t rockNumber, const int screenWidth, const int screenHeight, uint32_t MeteorSpeed, RockType meteorType);
+    Asteroid(uint32_t rockNumber, const int screenWidth, const int screenHeight, uint32_t MeteorSpeed, RockType meteorType);
+    Asteroid(Vector2 position, Vector2 speed,float radius, RockType meteorType);
+    
     void initialiseAMeteor(uint32_t rockNumber, bool active);
-    void initialiseAMeteor(Vector2 position, Vector2 speed,float radius, RockType meteorType);
+    
     void updateposition(const int screenWidth, const int screenHeight);
     uint32_t rockNum;
 public:

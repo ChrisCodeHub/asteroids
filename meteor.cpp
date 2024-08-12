@@ -18,7 +18,7 @@ void Asteroid::initialiseAMeteor(uint32_t rockNumber, bool active)
     color = GREEN;
 }
 
-void Asteroid::initialiseAMeteor(uint32_t rockNumber, const int screenWidth, const int screenHeight, uint32_t MeteorSpeed, RockType meteorType)
+Asteroid::Asteroid(uint32_t rockNumber, const int screenWidth, const int screenHeight, uint32_t MeteorSpeed, RockType meteorType)
 {
     std::cout<< " setting to " << rockNumber << "    " ;
     rockNum = rockNumber;
@@ -71,7 +71,7 @@ void Asteroid::initialiseAMeteor(uint32_t rockNumber, const int screenWidth, con
     rockType = meteorType;
 }
 
-void Asteroid::initialiseAMeteor(Vector2 positionIn, Vector2 speedIn,float radiusIn, RockType meteorType)
+Asteroid::Asteroid(Vector2 positionIn, Vector2 speedIn,float radiusIn, RockType meteorType)
 {
         position = positionIn;
         speed = speedIn;

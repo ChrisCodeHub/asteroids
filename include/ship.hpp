@@ -16,7 +16,7 @@ public:
 
     int shipHeight;
 
-    void initShip(const int screenWidth, const int screenHeight, const int playerBaseSize);
+    Ship(const int screenWidth, const int screenHeight, const int playerBaseSize);
     void updateShipPosition(const int screenWidth, const int screenHeight, const float playerSpeed);
     Vector2 getShipPosition(void)const;
     void updateCollider(void);

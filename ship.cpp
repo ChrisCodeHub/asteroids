@@ -13,7 +13,7 @@ void Ship::updateCollider(void)
 }
 
 
-void Ship::initShip(const int screenWidth, const int screenHeight, const int playerBaseSize)
+Ship::Ship(const int screenWidth, const int screenHeight, const int playerBaseSize)
 {
     shipHeight = (playerBaseSize/2)/tanf(20*DEG2RAD);
 
