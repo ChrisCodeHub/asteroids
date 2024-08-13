@@ -46,7 +46,7 @@ struct Values{
               PlayerSpeed{6.0},
               PlayerMaxShoots{200},
               MeteorsSpeed{2},
-              MaxBigMeteors{4},
+              MaxBigMeteors{1},
               screenWidth{800},
               screenHeight{450},
               gameOver{false},
@@ -58,7 +58,7 @@ struct Values{
 
 static Values values;
 static std::vector<Shots> shoots;
-static std::vector<Asteroid> asteroids;
+static std::vector<std::unique_ptr<Asteroid>> asteroids;
 
 //------------------------------------------------------------------------------------
 // Module Functions Declaration (local)
@@ -87,7 +87,7 @@ int main(void)
     
     for (uint32_t i = 0; i < values.MaxBigMeteors; i++)
     {        
-        asteroids.emplace_back(i, values.screenWidth, values.screenHeight, values.MeteorsSpeed, big);
+        asteroids.emplace_back(std::make_unique<Asteroid>(i, values.screenWidth, values.screenHeight, values.MeteorsSpeed, big));
     }
 
     // todo make this into a std::unique_ptr, add variable in at construction
@@ -181,17 +181,14 @@ void UpdateGame(Ship &ship)
             
             for (auto &rock : asteroids)
             {
-                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, rock.position, rock.radius)) values.gameOver = true;
+                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, rock->position, rock->radius)) values.gameOver = true;
             }
 
 
             //meteor logic
-            // TODO - there is a beter way to apply a function to each and every entry in a vector
-            // this works, but is a bit verbose to type
-
             for (auto &rock : asteroids)
             {                
-                rock.updateposition(values.screenWidth, values.screenHeight);
+                rock->updateposition(values.screenWidth, values.screenHeight);
             }
 
             for (auto &shot: shoots)
@@ -200,28 +197,25 @@ void UpdateGame(Ship &ship)
                 {
                     for (auto &rock : asteroids)
                     {   
-                        if (CheckCollisionCircles(shot.position, shot.radius, rock.position, rock.radius))
+                        if (CheckCollisionCircles(shot.position, shot.radius, rock->position, rock->radius))
                         {
                             shot.active = false;
-                            rock.active = false;                            
-                            if ((rock.rockType == big) || (rock.rockType == medium))
+                            rock->active = false;                            
+                            if ((rock->rockType == big) || (rock->rockType == medium))
                             {
-                                Vector2 position = (Vector2){rock.position.x, rock.position.y};
-                                for (int j = 0; j < 2; j ++)
+                                Vector2 position = (Vector2){rock->position.x, rock->position.y};
+                                auto speed1 = gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, true);
+                                auto speed2 = gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, false);                                  
+                                
+                                if (rock->rockType == big) 
+                                {                                        
+                                    asteroids.emplace_back(std::make_unique<Asteroid>(position, speed1, 20, medium));                                        
+                                    asteroids.emplace_back(std::make_unique<Asteroid>(position, speed2, 20, medium));                                        
+                                }
+                                else if (rock->rockType == medium)
                                 {
-                                    Vector2 speed{0,0};
-                                    speed = (j == 0)? gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, true)
-                                                    : gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, false);
-                                    
-                                    
-                                    if (rock.rockType == big) 
-                                    {
-                                        asteroids.emplace_back(position, speed, 20, medium);
-                                    }
-                                    else if (rock.rockType == medium)
-                                    {
-                                        asteroids.emplace_back(position, speed, 10, small);
-                                    }                                   
+                                    asteroids.emplace_back(std::make_unique<Asteroid>(position, speed1, 10, small));
+                                    asteroids.emplace_back(std::make_unique<Asteroid>(position, speed2, 10, small));
                                 }
                             }
                         }
@@ -232,7 +226,7 @@ void UpdateGame(Ship &ship)
 
         asteroids.erase( std::remove_if( asteroids.begin(), 
                             asteroids.end(),
-                            [](Asteroid const & r) { return r.active == false; }
+                            [](std::unique_ptr<Asteroid> const & r) { if (r == nullptr) return true; else return (r->active == false); }
                            ), asteroids.end());
         
         values.victory = (0 == (asteroids.size()));
@@ -265,7 +259,7 @@ void DrawGame(Ship &ship)
             // Draw meteors
             for (const auto &rock : asteroids)
             {
-                DrawCircleV(rock.position, rock.radius, rock.color);
+                DrawCircleV(rock->position, rock->radius, rock->color);
             }
 
             // Draw shots            
