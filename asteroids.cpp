@@ -18,6 +18,7 @@
 #include "meteor.hpp"
 #include "shots.hpp"
 #include "gameUtils.hpp"
+#include "gameInfo.hpp"
 #include "ship.hpp"
 #include <memory>
 #include <cstdint>
@@ -30,44 +31,12 @@
 #endif
 
 
-struct Values{
-    float PlayerBaseSize;
-    float PlayerSpeed;
-    uint32_t PlayerMaxShoots;
-    uint32_t MeteorsSpeed;
-    uint32_t MaxBigMeteors;
-    int screenWidth;
-    int screenHeight;
-    bool gameOver;
-    bool pause;
-    bool victory;
-
-    Values(): PlayerBaseSize{20.0},
-              PlayerSpeed{6.0},
-              PlayerMaxShoots{200},
-              MeteorsSpeed{2},
-              MaxBigMeteors{1},
-              screenWidth{800},
-              screenHeight{450},
-              gameOver{false},
-              pause{false},
-              victory{false}
-              {};
-};
-
-
-static Values values;
-static std::vector<Shots> shoots;
-static std::vector<std::unique_ptr<Asteroid>> asteroids;
-
 //------------------------------------------------------------------------------------
 // Module Functions Declaration (local)
 //------------------------------------------------------------------------------------
-static void InitGame(Ship &ship);         // Initialize game
-static void UpdateGame(Ship &ship);       // Update game (one frame)
-static void DrawGame(Ship &ship);         // Draw game (one frame)
+static void DrawGame(std::shared_ptr<GameInfo> gameInfo);         // Draw game (one frame)
 static void UnloadGame(void);       // Unload game
-static void UpdateDrawFrame(Ship &ship);  // Update and Draw (one frame)
+static void UpdateDrawFrame(std::shared_ptr<GameInfo> gameInfo);  // Update and Draw (one frame)
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -75,29 +44,18 @@ static void UpdateDrawFrame(Ship &ship);  // Update and Draw (one frame)
 int main(void)
 {
 
+    std::shared_ptr<GameInfo> game = std::make_shared<GameInfo>();
+
     // Providing a seed value to teh random number generator
 	srand((unsigned) time(NULL));
     auto seed = (rand() % 10);
     SetRandomSeed(seed);
 
-
-   // start to create t} Player;he low level blocks we will need 
-   // which is largely just teh frist set if large asteroids
-   // todo make these using make_unique, pass in variables to constructor
-    
-    for (uint32_t i = 0; i < values.MaxBigMeteors; i++)
-    {        
-        asteroids.emplace_back(std::make_unique<Asteroid>(i, values.screenWidth, values.screenHeight, values.MeteorsSpeed, big));
-    }
-
-    // todo make this into a std::unique_ptr, add variable in at construction
-    Ship ship(values.screenWidth, values.screenHeight, values.PlayerBaseSize);
-    
     // Initialization (Note windowTitle is unused on Android)
     //---------------------------------------------------------
-    InitWindow(values.screenWidth, values.screenHeight, "classic game: asteroids");
+    InitWindow(game->values.screenWidth, game->values.screenHeight, "classic game: asteroids");
 
-    InitGame(ship);
+    game->InitGame();
 
 #if defined(PLATFORM_WEB)
     emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
@@ -110,7 +68,7 @@ int main(void)
     {
         // Update and Draw
         //----------------------------------------------------------------------------------
-        UpdateDrawFrame(ship);
+        UpdateDrawFrame(game);
         //----------------------------------------------------------------------------------
     }
 #endif
@@ -128,153 +86,40 @@ int main(void)
 // Module Functions Definitions (local)
 //------------------------------------------------------------------------------------
 
-// Initialize game variables
-void InitGame(Ship &ship)
-{
-    values.victory = false;
-    values.pause = false;
-    
-}
-
-// Update game (one frame)
-void UpdateGame(Ship &ship)
-{
-    if (!values.gameOver)
-    {
-        if (IsKeyPressed('P')) 
-        {
-            values.pause = !values.pause;
-        }
-
-        if (!values.pause)
-        {
-            ship.updateShipPosition(values.screenWidth, values.screenHeight, values.PlayerSpeed);
-
-            // Player shoot logic
-            // create new Shots upto values.PlayerMaxShoots as player presesd SPACE key 
-            if (IsKeyPressed(KEY_SPACE))
-            {
-                
-                if (shoots.size() < values.PlayerMaxShoots)
-                {
-                    Vector2 playerPosition = ship.getShipPosition();
-                    Shots newShot(ship.rotation, values.PlayerSpeed, playerPosition);
-                    shoots.push_back(newShot);                   
-                }
-            }
-
-            // Shoot life timer
-            for (auto &shot: shoots)
-            {
-                shot.updateLife(values.screenHeight, values.screenWidth);
-            }
-
-            shoots.erase(std::remove_if( shoots.begin(), 
-                            shoots.end(),
-                            [](Shots const & p) { return p.active == false; }
-                            ), shoots.end());
-
-
-            // Collision logic: player vs meteors            
-            ship.updateCollider();
-
-            
-            for (auto &rock : asteroids)
-            {
-                if (CheckCollisionCircles((Vector2){ship.collider.x, ship.collider.y}, ship.collider.z, rock->position, rock->radius)) values.gameOver = true;
-            }
-
-
-            //meteor logic
-            for (auto &rock : asteroids)
-            {                
-                rock->updateposition(values.screenWidth, values.screenHeight);
-            }
-
-            for (auto &shot: shoots)
-            {
-                if ((shot.active))
-                {
-                    for (auto &rock : asteroids)
-                    {   
-                        if (CheckCollisionCircles(shot.position, shot.radius, rock->position, rock->radius))
-                        {
-                            shot.active = false;
-                            rock->active = false;                            
-                            if ((rock->rockType == big) || (rock->rockType == medium))
-                            {
-                                Vector2 position = (Vector2){rock->position.x, rock->position.y};
-                                auto speed1 = gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, true);
-                                auto speed2 = gameUtils::calcNewSpeed(shot.rotation, values.MeteorsSpeed, false);                                  
-                                
-                                if (rock->rockType == big) 
-                                {                                        
-                                    asteroids.emplace_back(std::make_unique<Asteroid>(position, speed1, 20, medium));                                        
-                                    asteroids.emplace_back(std::make_unique<Asteroid>(position, speed2, 20, medium));                                        
-                                }
-                                else if (rock->rockType == medium)
-                                {
-                                    asteroids.emplace_back(std::make_unique<Asteroid>(position, speed1, 10, small));
-                                    asteroids.emplace_back(std::make_unique<Asteroid>(position, speed2, 10, small));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        asteroids.erase( std::remove_if( asteroids.begin(), 
-                            asteroids.end(),
-                            [](std::unique_ptr<Asteroid> const & r) { if (r == nullptr) return true; else return (r->active == false); }
-                           ), asteroids.end());
-        
-        values.victory = (0 == (asteroids.size()));
-    }
-    else
-    {
-        if (IsKeyPressed(KEY_ENTER))
-        {
-            InitGame(ship);
-            values.gameOver = false;
-        }
-    }
-}
-
 // Draw game (one frame)
-void DrawGame(Ship &ship)
+void DrawGame(std::shared_ptr<GameInfo> gameInfo)
 {
     BeginDrawing();
 
         ClearBackground(RAYWHITE);
 
-        if (!values.gameOver)
+        if (!gameInfo->values.gameOver)
         {
             // Draw spaceship
-            Vector2 v1 = { ship.position.x + sinf(ship.rotation*DEG2RAD)*(ship.shipHeight), ship.position.y - cosf(ship.rotation*DEG2RAD)*(ship.shipHeight) };
-            Vector2 v2 = { ship.position.x - cosf(ship.rotation*DEG2RAD)*(values.PlayerBaseSize/2), ship.position.y - sinf(ship.rotation*DEG2RAD)*(values.PlayerBaseSize/2) };
-            Vector2 v3 = { ship.position.x + cosf(ship.rotation*DEG2RAD)*(values.PlayerBaseSize/2), ship.position.y + sinf(ship.rotation*DEG2RAD)*(values.PlayerBaseSize/2) };
-            DrawTriangle(v1, v2, v3, ship.color);
+            Vector2 v1 = { gameInfo->ship->position.x + sinf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->ship->shipHeight), gameInfo->ship->position.y - cosf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->ship->shipHeight) };
+            Vector2 v2 = { gameInfo->ship->position.x - cosf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->values.PlayerBaseSize/2), gameInfo->ship->position.y - sinf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->values.PlayerBaseSize/2) };
+            Vector2 v3 = { gameInfo->ship->position.x + cosf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->values.PlayerBaseSize/2), gameInfo->ship->position.y + sinf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->values.PlayerBaseSize/2) };
+            DrawTriangle(v1, v2, v3, gameInfo->ship->color);
 
             // Draw meteors
-            for (const auto &rock : asteroids)
+            for (const auto &rock : gameInfo->asteroids)
             {
                 DrawCircleV(rock->position, rock->radius, rock->color);
             }
 
             // Draw shots            
-            for (const auto &shot: shoots)
+            for (const auto &shot: gameInfo->shoots)
             {
                DrawCircleV(shot.position, shot.radius, shot.color);
             }
 
-            if (values.victory)
+            if (gameInfo->values.victory)
             {
-                DrawText("Victory", values.screenWidth/2 - MeasureText("Victory", 20)/2, values.screenHeight/2, 20, LIGHTGRAY);
+                DrawText("Victory", gameInfo->values.screenWidth/2 - MeasureText("Victory", 20)/2, gameInfo->values.screenHeight/2, 20, LIGHTGRAY);
             }
-            if (values.pause)
+            if (gameInfo->values.pause)
             {
-                DrawText("GAME paused", values.screenWidth/2 - MeasureText("GAME paused", 40)/2, values.screenHeight/2 - 40, 40, GRAY);
+                DrawText("GAME paused", gameInfo->values.screenWidth/2 - MeasureText("GAME paused", 40)/2, gameInfo->values.screenHeight/2 - 40, 40, GRAY);
             }
         }
         else 
@@ -292,8 +137,8 @@ void UnloadGame(void)
 }
 
 // Update and Draw (one frame)
-void UpdateDrawFrame(Ship &ship)
+void UpdateDrawFrame(std::shared_ptr<GameInfo> gameInfo)
 {
-    UpdateGame(ship);
-    DrawGame(ship);
+    gameInfo->UpdateGame();
+    DrawGame(gameInfo);
 }

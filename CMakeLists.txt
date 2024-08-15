@@ -36,6 +36,7 @@ set(app_SOURCES
     shots.cpp
     gameUtils.cpp
     ship.cpp
+    gameInfo.cpp
    )
 
 add_executable(${PROJECT_NAME} ${app_SOURCES})
