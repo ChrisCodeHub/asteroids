@@ -96,10 +96,8 @@ void DrawGame(std::shared_ptr<GameInfo> gameInfo)
         if (!gameInfo->values.gameOver)
         {
             // Draw spaceship
-            Vector2 v1 = { gameInfo->ship->position.x + sinf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->ship->shipHeight), gameInfo->ship->position.y - cosf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->ship->shipHeight) };
-            Vector2 v2 = { gameInfo->ship->position.x - cosf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->values.PlayerBaseSize/2), gameInfo->ship->position.y - sinf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->values.PlayerBaseSize/2) };
-            Vector2 v3 = { gameInfo->ship->position.x + cosf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->values.PlayerBaseSize/2), gameInfo->ship->position.y + sinf(gameInfo->ship->rotation*DEG2RAD)*(gameInfo->values.PlayerBaseSize/2) };
-            DrawTriangle(v1, v2, v3, gameInfo->ship->color);
+            ShipCorners Points = gameInfo->ship->getShipCorners(gameInfo->values.PlayerBaseSize);
+            DrawTriangle(Points.V1, Points.V2, Points.V3, gameInfo->ship->color);
 
             // Draw meteors
             for (const auto &rock : gameInfo->asteroids)

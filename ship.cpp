@@ -6,6 +6,18 @@
 #include "math.h"
 #include <algorithm>
 
+
+ShipCorners Ship::getShipCorners(float PlayerBaseSize)
+{
+    ShipCorners corners{(0,0), (0,0), (0,0)};
+
+    corners.V1 = { position.x + sinf(rotation*DEG2RAD)*(shipHeight), position.y - cosf(rotation*DEG2RAD)*(shipHeight) };
+    corners.V2 = { position.x - cosf(rotation*DEG2RAD)*(PlayerBaseSize/2), position.y - sinf(rotation*DEG2RAD)*(PlayerBaseSize/2) };
+    corners.V3 = { position.x + cosf(rotation*DEG2RAD)*(PlayerBaseSize/2), position.y + sinf(rotation*DEG2RAD)*(PlayerBaseSize/2) };
+
+    return corners;
+}
+
 void Ship::updateCollider(void)
 {
     collider = (Vector3){position.x + sin(rotation*DEG2RAD)*(shipHeight/2.5f),
